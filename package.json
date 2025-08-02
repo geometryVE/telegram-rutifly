@@ -1,0 +1,19 @@
+{
+  "name": "n8n-telegram-forwarder",
+  "version": "1.0.0",
+  "description": "Bot de Telegram que reenvía mensajes desde un webhook de n8n.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "telegraf": "^4.16.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
