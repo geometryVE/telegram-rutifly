@@ -3,6 +3,9 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 
+// Importar fetch para Node.js (versión 18+)
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
 // --- CONFIGURACIÓN ---
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const PORT = process.env.PORT || 3000;
@@ -86,6 +89,9 @@ bot.command('stop', (ctx) => {
 bot.on('text', (ctx) => {
     const userId = ctx.from.id;
     const message = ctx.message.text;
+    const username = ctx.from.username || 'Usuario';
+    const firstName = ctx.from.first_name || '';
+    const lastName = ctx.from.last_name || '';
     
     if (!isAuthorizedUser(userId)) {
         ctx.reply('❌ No estás autorizado. Usa /start para registrarte.');
@@ -94,8 +100,35 @@ bot.on('text', (ctx) => {
     
     saveMessageToLog(userId, message, 'text');
     
-    // Reenviar a la aplicación RutiFly (aquí implementarías la lógica)
-    console.log(`📤 Mensaje de ${userId}: ${message}`);
+    // Enviar mensaje a n8n para procesamiento
+    const messageData = {
+        userId: userId.toString(),
+        username: username,
+        firstName: firstName,
+        lastName: lastName,
+        message: message,
+        timestamp: new Date().toISOString(),
+        type: 'text'
+    };
+    
+    // Aquí puedes enviar a n8n o guardar en base de datos
+    console.log(`📤 Mensaje de ${userId} (${username}): ${message}`);
+    console.log('📊 Datos para n8n:', JSON.stringify(messageData, null, 2));
+    
+    // Opcional: Enviar a n8n webhook si está configurado
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
+    if (n8nWebhookUrl) {
+        fetch(n8nWebhookUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-webhook-secret': WEBHOOK_SECRET
+            },
+            body: JSON.stringify(messageData)
+        }).catch(error => {
+            console.error('Error enviando a n8n:', error);
+        });
+    }
     
     ctx.reply('✅ Mensaje recibido y procesado.');
 });
@@ -171,6 +204,22 @@ bot.on('photo', async (ctx) => {
 });
 
 // --- WEBHOOKS PARA ENVIAR MENSAJES DESDE LA APLICACIÓN ---
+
+// Webhook para recibir mensajes de usuarios (para n8n)
+app.post('/webhook-incoming', (req, res) => {
+    const secret = req.headers['x-webhook-secret'];
+    
+    if (secret !== WEBHOOK_SECRET) {
+        return res.status(401).send({ error: 'No autorizado' });
+    }
+    
+    // Este endpoint será llamado por n8n para recibir mensajes
+    // Los mensajes se envían automáticamente cuando los usuarios escriben al bot
+    res.status(200).send({ 
+        status: 'Webhook configurado correctamente',
+        message: 'Los mensajes de usuarios se enviarán automáticamente a este endpoint'
+    });
+});
 
 // Enviar mensaje de texto a múltiples usuarios
 app.post('/send-text', (req, res) => {

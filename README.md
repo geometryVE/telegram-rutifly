@@ -182,6 +182,148 @@ Para hacer el bot más escalable:
 4. **Monitoreo**: Agregar métricas y alertas
 5. **Rate limiting**: Limitar envíos por usuario
 
+## 🔗 Integración con n8n
+
+### ¿Qué es n8n?
+n8n es una plataforma de automatización que permite crear flujos de trabajo (workflows) conectando diferentes servicios y APIs.
+
+### Cómo integrar el bot con n8n:
+
+#### 1. **Configurar n8n Webhook**
+En n8n, crea un nuevo workflow y agrega un nodo "Webhook":
+- **Método**: POST
+- **Path**: `/webhook-n8n`
+- **Autenticación**: Header `x-webhook-secret`
+
+#### 2. **Flujo básico de notificaciones**
+```
+[Webhook] → [Procesar datos] → [Enviar a Telegram] → [Respuesta]
+```
+
+#### 3. **Ejemplos de workflows para RutiFly:**
+
+##### **Workflow: Notificación de nuevo pedido**
+```json
+{
+  "trigger": "webhook",
+  "nodes": [
+    {
+      "type": "webhook",
+      "path": "/nuevo-pedido",
+      "method": "POST"
+    },
+    {
+      "type": "httpRequest",
+      "url": "https://tu-bot.railway.app/send-text",
+      "method": "POST",
+      "headers": {
+        "x-webhook-secret": "tu-secret",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "message": "🆕 Nuevo pedido #{{$json.orderId}}\n📍 {{$json.address}}\n💰 ${{$json.total}}",
+        "userIds": ["{{$json.riderId}}"]
+      }
+    }
+  ]
+}
+```
+
+##### **Workflow: Cambio de estado de pedido**
+```json
+{
+  "trigger": "webhook",
+  "nodes": [
+    {
+      "type": "webhook",
+      "path": "/cambio-estado",
+      "method": "POST"
+    },
+    {
+      "type": "switch",
+      "conditions": [
+        {
+          "condition": "{{$json.status === 'preparando'}}",
+          "message": "👨‍🍳 Tu pedido está siendo preparado"
+        },
+        {
+          "condition": "{{$json.status === 'en_camino'}}",
+          "message": "🚚 Tu pedido está en camino"
+        },
+        {
+          "condition": "{{$json.status === 'entregado'}}",
+          "message": "✅ Tu pedido ha sido entregado"
+        }
+      ]
+    },
+    {
+      "type": "httpRequest",
+      "url": "https://tu-bot.railway.app/send-text",
+      "method": "POST",
+      "headers": {
+        "x-webhook-secret": "tu-secret",
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "message": "{{$json.message}}\n📦 Pedido #{{$json.orderId}}",
+        "userIds": ["{{$json.clientId}}"]
+      }
+    }
+  ]
+}
+```
+
+##### **Workflow: Broadcast de promociones**
+```json
+{
+  "trigger": "schedule",
+  "schedule": "0 12 * * 1" // Lunes a las 12:00
+},
+{
+  "type": "httpRequest",
+  "url": "https://tu-bot.railway.app/send-photo",
+  "method": "POST",
+  "headers": {
+    "x-webhook-secret": "tu-secret",
+    "Content-Type": "application/json"
+  },
+  "body": {
+    "photoUrl": "https://rutifly.com/promocion-semanal.jpg",
+    "caption": "🔥 ¡Oferta semanal!\n\n20% de descuento en todos los pedidos\n\nCódigo: SEMANA20",
+    "broadcast": true
+  }
+}
+```
+
+#### 4. **Configuración en n8n:**
+
+1. **Instala n8n** (local o en la nube)
+2. **Crea un nuevo workflow**
+3. **Agrega nodos HTTP Request** para conectar con tu bot
+4. **Configura triggers** (webhook, schedule, etc.)
+5. **Prueba el flujo**
+
+#### 5. **Variables de entorno en n8n:**
+```env
+BOT_WEBHOOK_URL=https://tu-bot.railway.app
+BOT_SECRET=tu-secret-para-webhooks
+```
+
+#### 6. **Casos de uso avanzados:**
+
+- **Notificaciones automáticas** cuando se crean pedidos
+- **Recordatorios** para riders sobre órdenes pendientes
+- **Encuestas** automáticas después de entregas
+- **Alertas** cuando hay problemas técnicos
+- **Reportes** diarios/semanales enviados por Telegram
+
+### Ventajas de usar n8n:
+- **Visual**: Creas workflows arrastrando nodos
+- **Flexible**: Conecta con cualquier API
+- **Escalable**: Maneja múltiples flujos simultáneos
+- **Monitoreo**: Ve el estado de cada ejecución
+- **Retry**: Reintentos automáticos en caso de fallo
+
 ## 🐛 Troubleshooting
 
 ### El bot no responde:

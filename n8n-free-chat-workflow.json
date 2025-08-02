@@ -1,0 +1,270 @@
+{
+  "name": "FREE_CHAT - Chat Libre RutiFly",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-libre",
+        "authentication": "headerAuth",
+        "headerName": "x-webhook-secret",
+        "headerValue": "{{$env.BOT_SECRET}}"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "userId": "{{$json.userId}}",
+          "username": "{{$json.username}}",
+          "firstName": "{{$json.firstName}}",
+          "lastName": "{{$json.lastName}}",
+          "message": "{{$json.message}}",
+          "timestamp": "{{$json.timestamp}}",
+          "type": "{{$json.type}}"
+        }
+      },
+      "id": "process-message",
+      "name": "Procesar Mensaje",
+      "type": "set",
+      "typeVersion": 3.4,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{$json.message}}",
+              "operation": "contains",
+              "value2": "/ayuda"
+            }
+          ]
+        }
+      },
+      "id": "help-condition",
+      "name": "¿Es solicitud de ayuda?",
+      "type": "if",
+      "typeVersion": 2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "{{$json.message}}",
+              "operation": "contains",
+              "value2": "/pedido"
+            }
+          ]
+        }
+      },
+      "id": "order-condition",
+      "name": "¿Es sobre pedido?",
+      "type": "if",
+      "typeVersion": 2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "message": "🤖 **Centro de Ayuda RutiFly**\n\n📋 **Comandos disponibles:**\n• /ayuda - Ver esta ayuda\n• /pedido [número] - Consultar estado de pedido\n• /tiendas - Ver tiendas disponibles\n• /contacto - Información de contacto\n\n💬 **Soporte humano:**\nSi necesitas ayuda personalizada, escribe 'soporte' y te conectaré con un agente.",
+          "userIds": ["{{$json.userId}}"]
+        }
+      },
+      "id": "help-response",
+      "name": "Respuesta de Ayuda",
+      "type": "set",
+      "typeVersion": 3.4,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "values": {
+          "message": "📦 **Consulta de Pedido**\n\nEstoy procesando tu consulta sobre el pedido.\n\n🔍 Buscando información...",
+          "userIds": ["{{$json.userId}}"]
+        }
+      },
+      "id": "order-response",
+      "name": "Respuesta de Pedido",
+      "typeVersion": 3.4,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "message": "💬 **Mensaje Recibido**\n\nGracias por escribirnos. Un agente te responderá pronto.\n\n⏰ Tiempo de respuesta: 5-10 minutos",
+          "userIds": ["{{$json.userId}}"]
+        }
+      },
+      "id": "default-response",
+      "name": "Respuesta por Defecto",
+      "type": "set",
+      "typeVersion": 3.4,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "url": "{{$env.BOT_WEBHOOK_URL}}/send-text",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/json",
+          "x-webhook-secret": "{{$env.BOT_SECRET}}"
+        },
+        "body": "={{$json}}"
+      },
+      "id": "send-response",
+      "name": "Enviar Respuesta",
+      "type": "httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "logEntry": {
+            "timestamp": "{{$json.timestamp}}",
+            "userId": "{{$json.userId}}",
+            "username": "{{$json.username}}",
+            "message": "{{$json.message}}",
+            "response": "{{$('Enviar Respuesta').item.json.status}}"
+          }
+        }
+      },
+      "id": "log-interaction",
+      "name": "Registrar Interacción",
+      "type": "set",
+      "typeVersion": 3.4,
+      "position": [1340, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Procesar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "¿Es solicitud de ayuda?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "¿Es sobre pedido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es solicitud de ayuda?": {
+      "main": [
+        [
+          {
+            "node": "Respuesta de Ayuda",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Es sobre pedido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es sobre pedido?": {
+      "main": [
+        [
+          {
+            "node": "Respuesta de Pedido",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta por Defecto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta de Ayuda": {
+      "main": [
+        [
+          {
+            "node": "Enviar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta de Pedido": {
+      "main": [
+        [
+          {
+            "node": "Enviar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta por Defecto": {
+      "main": [
+        [
+          {
+            "node": "Enviar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Registrar Interacción",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "rutifly-chat",
+      "name": "RutiFly Chat"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+} 
